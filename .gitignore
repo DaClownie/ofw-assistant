@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# App specific
+.env
+data/
+*.dmg
+*.zip
+dist/
+build/
+*.spec
+OFW_Assistant_Installer/
+binaries/
+dmg_temp/
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log

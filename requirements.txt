@@ -1,0 +1,13 @@
+streamlit
+python-dotenv
+langchain
+langchain-community
+pypdf
+openai
+requests
+chromadb
+sentence-transformers
+python-docx
+pillow
+openai-whisper
+easyocr
