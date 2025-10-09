@@ -54,8 +54,10 @@ An AI-powered document analysis tool designed for family law professionals to an
 
 # Create virtual environment
 
-python3 -m venv venv
-source venv/bin/activate
+```bash
+  python3 -m venv venv
+  source venv/bin/activate
+```
 
 # Install dependencies
 
@@ -81,28 +83,28 @@ This will:
 2. Create installer package
 3. Generate DMG for distribution
 
-### Usage
+# Usage
 
-# Uploading Files
+### Uploading Files
 
 1. Select or create a case
 2. Upload documents (drag & drop or file picker)
 3. Files are automatically analyzed and tagged
 
-# Creating Memos
+### Creating Memos
 
 1. Navigate to Memo Builder
 2. Select files by case or individually
 3. Generate base memo or enhance with AI
 4. Export as .txt or .docx
 
-# Dashboard
+### Dashboard
 
 - Browse by category or case
 - Search across all content
 - View analytics and flag summaries
 
-### Tech Stack
+# Tech Stack
 
 - **Frontend:** Streamlit
 - **AI Models:**
@@ -113,14 +115,14 @@ This will:
 - **Vector Storage:** ChromaDB with Sentence Transformers
 - **Document Processing:** LangChain, PyPDF, python-docx
 
-### Privacy & Data
+# Privacy & Data
 
 - All AI processing uses your own API key
 - Files stored locally in ~/OFW_Assistant_Files/
 - No data sent to third parties except OpenAI API (when using GPT-4 features)
 - Case files organized by case ID for easy management
 
-### Contributing
+# Contributing
 
 Contributions welcome! Please see TODO.md for planned features and improvements.
 
@@ -130,11 +132,11 @@ Contributions welcome! Please see TODO.md for planned features and improvements.
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### License
+# License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-### Support
+# Support
 
 For issues or questions, please open an issue on GitHub.
 
