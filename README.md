@@ -14,7 +14,7 @@ An AI-powered document analysis tool designed for family law professionals to an
 
 ## Screenshots
 
-_(Add screenshots here after testing)_
+**_Screenshots needed_**
 
 ## Installation
 
@@ -47,8 +47,10 @@ _(Add screenshots here after testing)_
 
 # Clone the repository
 
-git clone https://github.com/your-username/ofw-assistant.git
-cd ofw-assistant
+```bash
+  git clone https://github.com/your-username/ofw-assistant.git
+  cd ofw-assistant
+```
 
 # Create virtual environment
 
@@ -57,11 +59,15 @@ source venv/bin/activate
 
 # Install dependencies
 
-pip install -r requirements.txt
+```bash
+  pip install -r requirements.txt
+```
 
 # Run the application
 
-streamlit run app.py
+```bash
+  streamlit run app.py
+```
 
 ### Building a Release
 
