@@ -200,11 +200,12 @@ def _render_memo_actions(memo_data):
             _generate_ai_enhanced_memo(memo_data, case_id)
     
     with col2:
-        if st.button("💾 Save Memo to Case"):
-            _save_memo_to_case(memo_data, case_id, memo_name)
+        # Save basic memo button - always available
+        if st.button("💾 Save Basic Memo"):
+            _save_basic_memo_to_case(memo_data, case_id, memo_name)
     
     # Display AI-enhanced memo if generated
-    _render_enhanced_memo()
+    _render_enhanced_memo(case_id, memo_name, memo_data)
 
 
 def _detect_case_id(memo_data):
@@ -315,33 +316,59 @@ Fabrication Indicators: {'Yes' if analysis['has_fabricated_concerns'] else 'No'}
 """
 
 
-def _save_memo_to_case(memo_data, case_id, memo_name):
-    """Save memo to case"""
+def _save_basic_memo_to_case(memo_data, case_id, memo_name):
+    """Save basic (non-AI) memo to case"""
     if not case_id:
         st.warning("⚠️ Please enter a case ID to save")
         return
     
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
-    full_memo_name = f"{memo_name} ({timestamp})" if memo_name else f"Memo - {timestamp}"
+    full_memo_name = f"{memo_name} - Basic ({timestamp})" if memo_name else f"Memo - Basic ({timestamp})"
     
-    # Use AI-enhanced version if available
+    # Always save the basic edited summary
     edited_summary = st.session_state["memo_content"]['summary']
-    memo_to_save = st.session_state.get("enhanced_memo_export", edited_summary)
     
-    memo_metadata = f"\n\n---\nGenerated: {timestamp}\nFiles included: {len(memo_data['files'])}\nType: {'AI-Enhanced' if 'enhanced_memo_export' in st.session_state else 'Basic'}"
+    memo_metadata = f"\n\n---\nGenerated: {timestamp}\nFiles included: {len(memo_data['files'])}\nType: Basic"
+    memo_with_metadata = edited_summary + memo_metadata
+    
+    save_memo(case_id.strip(), memo_with_metadata, sources=memo_data['files'], memo_name=full_memo_name)
+    st.success(f"✅ Basic memo '{full_memo_name}' saved to case: {case_id.strip()}")
+
+
+def _save_ai_memo_to_case(memo_data, case_id, memo_name):
+    """Save AI-enhanced memo to case"""
+    if not case_id:
+        st.warning("⚠️ Please enter a case ID to save")
+        return
+    
+    if "enhanced_memo_export" not in st.session_state:
+        st.warning("⚠️ No AI-enhanced memo to save. Generate one first!")
+        return
+    
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+    full_memo_name = f"{memo_name} - AI Enhanced ({timestamp})" if memo_name else f"Memo - AI Enhanced ({timestamp})"
+    
+    # Save the AI-enhanced version
+    memo_to_save = st.session_state["enhanced_memo_export"]
+    
+    memo_metadata = f"\n\n---\nGenerated: {timestamp}\nFiles included: {len(memo_data['files'])}\nType: AI-Enhanced"
     memo_with_metadata = memo_to_save + memo_metadata
     
     save_memo(case_id.strip(), memo_with_metadata, sources=memo_data['files'], memo_name=full_memo_name)
-    st.success(f"✅ Memo '{full_memo_name}' saved to case: {case_id.strip()}")
+    st.success(f"✅ AI-enhanced memo '{full_memo_name}' saved to case: {case_id.strip()}")
 
 
-def _render_enhanced_memo():
+def _render_enhanced_memo(case_id, memo_name, memo_data):
     """Display AI-enhanced memo if it exists"""
     if "enhanced_memo_display" not in st.session_state:
         return
     
     st.subheader("🧠 AI-Enhanced Memo")
     st.markdown(st.session_state["enhanced_memo_display"])
+    
+    # Save AI-enhanced memo button
+    if st.button("💾 Save AI-Enhanced Memo"):
+        _save_ai_memo_to_case(memo_data, case_id, memo_name)
     
     if st.checkbox("✏️ Edit enhanced memo"):
         edited_enhanced = st.text_area(
