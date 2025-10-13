@@ -119,6 +119,81 @@ def _group_by_case(file_data):
     return by_case
 
 
+def _render_individual_case(case_id, memory):
+    """Render detailed view for a single case"""
+    case_files = [(fname, meta) for fname, meta in memory.items() 
+                  if meta.get("case_id") == case_id]
+    
+    if not case_files:
+        st.info(f"No files found in case: {case_id}")
+        return
+    
+    # Case overview stats
+    col1, col2, col3 = st.columns(3)
+    
+    total_files = len(case_files)
+    has_transcripts = sum(1 for fname, meta in case_files if meta.get("transcript"))
+    total_flags = sum(len(meta.get("flags", [])) for fname, meta in case_files)
+    
+    col1.metric("Files", total_files)
+    col2.metric("Transcripts", has_transcripts)
+    col3.metric("Flags", total_flags)
+    
+    # Show case profile
+    st.markdown("### 📊 Case Profile")
+    all_tags = set()
+    for fname, meta in case_files:
+        all_tags.update(meta.get("tags", []))
+    
+    if all_tags:
+        case_categories = {}
+        for tag in all_tags:
+            cat = controlled_taxonomy.get_category_for_tag(tag)
+            case_categories.setdefault(cat, []).append(tag)
+        
+        for cat, tags in sorted(case_categories.items()):
+            with st.expander(f"**{cat.replace('_', ' ').title()}** ({len(tags)} tags)"):
+                for tag in sorted(tags):
+                    # Count files with this tag
+                    tag_file_count = sum(1 for fname, meta in case_files 
+                                        if tag in meta.get("tags", []))
+                    st.markdown(f"- {tag.replace('_', ' ')} ({tag_file_count} files)")
+    else:
+        st.info("No tags found for this case")
+    
+    # Show files
+    st.markdown("### 📄 Files")
+    for fname, meta in sorted(case_files, key=lambda x: x[0]):
+        flags = meta.get("flags", [])
+        flag_str = f" 🚩 {' / '.join(flags)}" if flags else ""
+        file_type = "🎙️" if meta.get("transcript") else "📄"
+        
+        with st.expander(f"{file_type} {fname}{flag_str}"):
+            # Show tags for this file
+            file_tags = meta.get("tags", [])
+            if file_tags:
+                st.markdown("**Tags:**")
+                file_tags_by_cat = {}
+                for tag in file_tags:
+                    cat = controlled_taxonomy.get_category_for_tag(tag)
+                    file_tags_by_cat.setdefault(cat, []).append(tag)
+                
+                for cat, tags in sorted(file_tags_by_cat.items()):
+                    st.markdown(f"- **{cat.replace('_', ' ').title()}:** {', '.join(tags)}")
+            
+            # Show flags if present
+            if flags:
+                st.markdown("**Flags:**")
+                for flag in flags:
+                    st.markdown(f"- 🚩 {flag.replace('_', ' ').title()}")
+            
+            # Show transcript preview if available
+            if meta.get("transcript"):
+                st.markdown("**Transcript Preview:**")
+                preview = meta["transcript"][:200]
+                st.text(preview + ("..." if len(meta["transcript"]) > 200 else ""))
+
+
 def _render_case_browser(memory):
     """Render case-based file browser"""
     st.subheader("📁 Browse by Case")
@@ -126,9 +201,15 @@ def _render_case_browser(memory):
     cases = list(get_cases())
     case_tabs = st.tabs(["All Cases"] + cases[:5])
     
+    # All Cases tab
     with case_tabs[0]:
         for cid in cases:
             _render_case_summary(cid, memory)
+    
+    # Individual case tabs
+    for idx, case_id in enumerate(cases[:5], start=1):
+        with case_tabs[idx]:
+            _render_individual_case(case_id, memory)
 
 
 def _render_case_summary(case_id, memory):
