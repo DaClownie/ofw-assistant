@@ -23,6 +23,13 @@
 - [ ] Add error logging system
 - [ ] Add unit tests for core functionality
 
+## \*\*Code Quality & Maintenance
+
+- [ ] Fix Streamlit empty label warnings
+  - [ ] Add label_visibility="collapsed" to all widgets with empty labels
+  - [ ] Run grep to find all instances: `grep -rn 'st\.\w\+("")' app/`
+  - [ ] Consider adding to linting/review checklist
+
 ## Features to Consider (Post-Feedback)
 
 - [ ] Bulk file processing improvements

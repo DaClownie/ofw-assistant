@@ -19,15 +19,144 @@ def render_memo_builder_page(memory):
     st.header("📝 Memo Builder")
     
     # File selection section
-    selected_files = _render_file_selection(memory)
+    selection_result = _render_file_selection(memory)
+    selected_files = selection_result.get('files', [])
+    selection_metadata = selection_result.get('metadata', {})
     
     if selected_files:
         _render_selected_files_summary(selected_files, memory)
-        _render_memo_generation(selected_files, memory)
+        _render_memo_generation(selected_files, memory, selection_metadata)
         _render_memo_content_display()
     
     # Display saved memos
     _render_saved_memos()
+
+
+def _render_tag_selection(memory):
+    """Render tag-based file selection interface"""
+    from app.utils.controlled_taxonomy import controlled_taxonomy
+    
+    # Build tag index: which files have which tags
+    tag_index = {}
+    all_tags = set()
+    
+    for fname, meta in memory.items():
+        for tag in meta.get('tags', []):
+            all_tags.add(tag)
+            if tag not in tag_index:
+                tag_index[tag] = []
+            tag_index[tag].append(fname)
+    
+    if not all_tags:
+        st.warning("No tags found in any files. Upload and process files first.")
+        return {'files': [], 'metadata': {}}
+    
+    # Organize tags by category for better UX
+    tags_by_category = {}
+    for tag in sorted(all_tags):
+        category = controlled_taxonomy.get_category_for_tag(tag)
+        if category not in tags_by_category:
+            tags_by_category[category] = []
+        tags_by_category[category].append(tag)
+    
+    # Let user choose selection mode
+    tag_selection_mode = st.radio(
+        "Tag selection mode:",
+        ["Select by Category", "Select Individual Tags"],
+        help="Category mode selects all files in chosen categories. Individual mode lets you pick specific tags."
+    )
+    
+    selected_files = set()
+    selection_metadata = {'tag_selection_mode': tag_selection_mode.lower().replace(' ', '_')}
+    
+    if tag_selection_mode == "Select by Category":
+        # Show categories with file counts
+        category_options = []
+        for category, tags in sorted(tags_by_category.items()):
+            # Count unique files in this category
+            category_files = set()
+            for tag in tags:
+                category_files.update(tag_index.get(tag, []))
+            category_options.append(f"{category.replace('_', ' ').title()} ({len(category_files)} files)")
+        
+        selected_category_labels = st.multiselect(
+            "Select categories:",
+            category_options,
+            help="Select one or more categories to include all files with tags in those categories"
+        )
+        
+        # Extract category names from labels
+        selected_categories = [label.split(' (')[0] for label in selected_category_labels]
+        selection_metadata['selected_categories'] = selected_categories
+        
+        # Get all files from selected categories
+        for category_display in selected_categories:
+            category_key = category_display.lower().replace(' ', '_')
+            if category_key in tags_by_category:
+                for tag in tags_by_category[category_key]:
+                    selected_files.update(tag_index.get(tag, []))
+        
+        if selected_files:
+            st.info(f"📊 Selected {len(selected_files)} files from {len(selected_categories)} categor{'y' if len(selected_categories) == 1 else 'ies'}")
+            
+            # Show which tags are included
+            with st.expander("🏷️ View included tags"):
+                for category_display in selected_categories:
+                    category_key = category_display.lower().replace(' ', '_')
+                    if category_key in tags_by_category:
+                        st.markdown(f"**{category_display}:**")
+                        tags = tags_by_category[category_key]
+                        for tag in tags:
+                            file_count = len(tag_index.get(tag, []))
+                            st.markdown(f"  - {tag.replace('_', ' ')} ({file_count} files)")
+    
+    else:  # Individual Tags
+        # Create searchable tag list with file counts
+        tag_options = []
+        for tag in sorted(all_tags):
+            category = controlled_taxonomy.get_category_for_tag(tag)
+            file_count = len(tag_index.get(tag, []))
+            tag_options.append(f"{tag.replace('_', ' ')} ({file_count} files) - {category.replace('_', ' ')}")
+        
+        selected_tag_labels = st.multiselect(
+            "Select tags:",
+            tag_options,
+            help="Select one or more tags. Files matching ANY selected tag will be included."
+        )
+        
+        # Extract tag names from labels
+        selected_tags = [label.split(' (')[0].replace(' ', '_') for label in selected_tag_labels]
+        selection_metadata['selected_tags'] = selected_tags
+        
+        # Get all files with any of the selected tags
+        for tag in selected_tags:
+            selected_files.update(tag_index.get(tag, []))
+        
+        if selected_files:
+            st.info(f"📊 Selected {len(selected_files)} files matching {len(selected_tags)} tag(s)")
+    
+    # Show file preview grouped by case
+    if selected_files:
+        with st.expander("📋 Preview selected files"):
+            files_by_case = {}
+            for fname in selected_files:
+                meta = memory.get(fname, {})
+                case_id = meta.get('case_id', 'Unassigned')
+                if case_id not in files_by_case:
+                    files_by_case[case_id] = []
+                files_by_case[case_id].append(fname)
+            
+            for case_id, files in sorted(files_by_case.items()):
+                st.markdown(f"**📁 Case: {case_id}** ({len(files)} files)")
+                for fname in sorted(files)[:5]:  # Show first 5 per case
+                    st.markdown(f"  - {fname}")
+                if len(files) > 5:
+                    st.markdown(f"  - ... and {len(files) - 5} more")
+    
+    return {
+        'files': list(selected_files),
+        'metadata': selection_metadata
+    }
 
 
 def _render_file_selection(memory):
@@ -45,10 +174,11 @@ def _render_file_selection(memory):
     # Selection method
     selection_method = st.radio(
         "Selection method:", 
-        ["Select by Case", "Select Individual Files"]
+        ["Select by Case", "Select by Tags", "Select Individual Files"]
     )
     
     selected_files = []
+    selection_metadata = {'method': selection_method.lower().replace(' ', '_')}
     
     if selection_method == "Select by Case":
         selected_cases = st.multiselect("Select cases to include:", list(case_files.keys()))
@@ -57,10 +187,20 @@ def _render_file_selection(memory):
         
         if selected_files:
             st.info(f"Selected {len(selected_files)} files from {len(selected_cases)} case(s)")
+            selection_metadata['cases'] = selected_cases
+    
+    elif selection_method == "Select by Tags":
+        tag_result = _render_tag_selection(memory)
+        selected_files = tag_result.get('files', [])
+        selection_metadata.update(tag_result.get('metadata', {}))
+    
     else:
         selected_files = st.multiselect("Select individual files:", list(memory.keys()))
     
-    return selected_files
+    return {
+        'files': selected_files,
+        'metadata': selection_metadata
+    }
 
 
 def _render_selected_files_summary(selected_files, memory):
@@ -83,13 +223,15 @@ def _render_selected_files_summary(selected_files, memory):
             st.markdown(file_info)
 
 
-def _render_memo_generation(selected_files, memory):
+def _render_memo_generation(selected_files, memory, selection_metadata):
     """Render memo generation controls"""
     if st.button("🔄 Generate Memo Content"):
         with st.spinner("Processing selected files..."):
             memo_data = _generate_memo_content(selected_files, memory)
             
             if memo_data:
+                # Add selection metadata to memo data
+                memo_data['selection_metadata'] = selection_metadata
                 st.session_state["memo_content"] = memo_data
                 st.success("✅ Memo content generated!")
 
@@ -143,9 +285,11 @@ def _render_memo_content_display():
     
     # Editable memo content
     edited_summary = st.text_area(
-        "✏️ Memo Content (editable):", 
+        "Memo Content", 
         value=memo_data['summary'], 
-        height=400
+        height=400,
+        label_visibility="visible",
+        help="Edit the memo content as needed before saving or enhancing with AI"
     )
     
     if edited_summary != memo_data['summary']:
@@ -254,7 +398,25 @@ def _generate_ai_enhanced_memo(memo_data, case_id):
 
 def _build_memo_prompt(memo_data, case_id, analysis, summary):
     """Build comprehensive prompt for GPT-4 memo generation"""
-    return f"""You are a legal case analyst. Write a professional memo for case {case_id or 'General'}.
+    
+    # Determine selection context from metadata
+    selection_context = ""
+    metadata = memo_data.get('selection_metadata', {})
+    method = metadata.get('method', '')
+    
+    if method == 'select_by_tags':
+        tag_mode = metadata.get('tag_selection_mode', '')
+        if tag_mode == 'select_by_category':
+            categories = metadata.get('selected_categories', [])
+            if categories:
+                selection_context = f"\n\nFILE SELECTION CRITERIA: Documents were specifically filtered to include files tagged in these categories: {', '.join(categories)}. This memo focuses exclusively on these topical areas."
+        elif tag_mode == 'select_individual_tags':
+            tags = metadata.get('selected_tags', [])
+            if tags:
+                formatted_tags = [tag.replace('_', ' ').title() for tag in tags]
+                selection_context = f"\n\nFILE SELECTION CRITERIA: Documents were specifically filtered to include files with these tags: {', '.join(formatted_tags)}. This memo focuses exclusively on these specific concerns."
+    
+    return f"""You are a legal case analyst. Write a professional memo for case {case_id or 'General'}.{selection_context}
 
 SOURCE DOCUMENTS ({len(memo_data['files'])} files):
 {chr(10).join(f'- {f}' for f in memo_data['files'])}
@@ -372,9 +534,10 @@ def _render_enhanced_memo(case_id, memo_name, memo_data):
     
     if st.checkbox("✏️ Edit enhanced memo"):
         edited_enhanced = st.text_area(
-            "Edit enhanced memo:", 
+            "Enhanced Memo Content", 
             value=st.session_state["enhanced_memo_display"], 
-            height=300
+            height=300,
+            label_visibility="visible"
         )
         
         if edited_enhanced != st.session_state["enhanced_memo_display"]:
@@ -487,7 +650,8 @@ def _render_saved_memo(memo_obj, case_id, index):
     
     st.markdown(f"**{memo_name}**")
     preview = memo_text[:300] + ("..." if len(memo_text) > 300 else "")
-    st.text_area("", value=preview, height=100, disabled=True, key=f"preview_{case_id}_{index}")
+    st.text_area("Memo Preview", value=preview, height=100, disabled=True, 
+                 key=f"preview_{case_id}_{index}", label_visibility="collapsed")
     
     if sources:
         sources_preview = ', '.join(sources[:3]) + ('...' if len(sources) > 3 else '')
