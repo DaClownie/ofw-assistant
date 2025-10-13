@@ -32,7 +32,7 @@
 
 ## Features to Consider (Post-Feedback)
 
-- [ ] Bulk file processing improvements
+- [x] Bulk file processing improvements
 - [ ] Export memo templates customization
 - [ ] Advanced search filters in dashboard
 - [ ] Memo comparison/diff tool

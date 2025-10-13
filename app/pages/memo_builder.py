@@ -13,7 +13,6 @@ from app.utils.memo import (
 from app.utils.controlled_smart_tagger import controlled_smart_tagger
 from app.utils.model_gpt4 import generate_memo_with_gpt4
 
-
 def render_memo_builder_page(memory):
     """Render the memo builder page UI"""
     st.header("📝 Memo Builder")
