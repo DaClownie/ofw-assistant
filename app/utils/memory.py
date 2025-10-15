@@ -28,6 +28,16 @@ def load_memory():
     with open(MEMORY_PATH, "r") as f:
         return json.load(f)
 
+def save_memory(memory):
+    """
+    Save memory dictionary to file
+    
+    Args:
+        memory: Dictionary of file metadata to save
+    """
+    with open(MEMORY_PATH, "w") as f:
+        json.dump(memory, f, indent=2)
+
 def get_cases():
     memory = load_memory()
     cases = set()
@@ -35,5 +45,3 @@ def get_cases():
         if meta.get("case_id"):
             cases.add(meta["case_id"])
     return sorted(cases)
-
-

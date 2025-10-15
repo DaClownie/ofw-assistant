@@ -1,5 +1,5 @@
 from langchain_community.vectorstores import Chroma
-from langchain.embeddings import SentenceTransformerEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings as SentenceTransformerEmbeddings
 from pathlib import Path
 
 VECTOR_DIR = Path("data/chroma_db")
