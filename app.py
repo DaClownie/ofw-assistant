@@ -2,11 +2,19 @@
 OFW Assistant - Main Application Entry Point
 Refactored for better maintainability and modularity
 """
+
+
 import os
+import warnings
+from urllib3.exceptions import NotOpenSSLWarning
+warnings.filterwarnings('ignore', category=NotOpenSSLWarning)
+
+# Suppress all warnings
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings('ignore')
+
 import streamlit as st
 
-# Suppress warnings
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 try:
     import torch
     torch._classes = {}
@@ -23,6 +31,7 @@ from app.utils.memory import load_memory
 from app.pages.upload import render_upload_page
 from app.pages.dashboard import render_dashboard_page
 from app.pages.memo_builder import render_memo_builder_page
+from app.pages.case_management import render_case_management_page
 
 
 def main():
@@ -50,6 +59,8 @@ def main():
         render_dashboard_page(memory)
     elif page == "Memo Builder":
         render_memo_builder_page(memory)
+    elif page == "Case Management":
+        render_case_management_page()
 
 
 if __name__ == "__main__":

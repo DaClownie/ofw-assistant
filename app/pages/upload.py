@@ -4,6 +4,7 @@ Upload page for document and media file processing
 import shutil
 import streamlit as st
 from pathlib import Path
+from datetime import datetime
 from app.config import UPLOADS_DIR, SUPPORTED_FILE_TYPES
 from app.utils.memory import get_cases, update_memory
 
@@ -57,10 +58,18 @@ def _render_case_selector():
         st.info("👆 Please select an existing case or create a new one")
         return None
     elif selected_option == "+ Create new case":
-        case_id = st.text_input("Enter new case ID:")
-        if not case_id:
+        case_id_input = st.text_input("Enter new case ID:")
+        if not case_id_input:
             st.warning("⚠️ Please enter a case ID for the new case")
             return None
+        
+        # Normalize case ID (replace spaces with underscores)
+        case_id = case_id_input.replace(" ", "_")
+        
+        # Show normalization if it changed
+        if case_id != case_id_input:
+            st.info(f"ℹ️ Case ID folder name normalized: `{case_id_input}` → `{case_id}`")
+        
         return case_id
     else:
         st.success(f"📂 Selected case: {selected_option}")
@@ -145,15 +154,12 @@ def _process_uploaded_files(uploaded_files, case_id):
                 tracker.mark_processed(uploaded_file.name, checksum, {'status': 'duplicate', 'existing_file': existing_file})
                 continue
             
-            # Process file with AI
-            result = _process_file_with_ai(upload_path, uploaded_file.name, case_id, file_handler, checksum)
+            # Process file with unified processor (it will move the file)
+            result = _process_file_with_ai(upload_path, uploaded_file.name, case_id, checksum, file_handler)
             
             # Track as processed
             tracker.mark_processed(uploaded_file.name, checksum, result)
             stats['processed'] += 1
-            
-            if result.get('was_renamed'):
-                stats['renamed'] += 1
             
         except Exception as e:
             st.error(f"❌ Error processing {uploaded_file.name}: {str(e)}")
@@ -176,64 +182,51 @@ def _process_uploaded_files(uploaded_files, case_id):
     st.session_state['is_processing'] = False
 
 
-def _process_file_with_ai(upload_path, filename, case_id, file_handler, checksum):
-    """Process file using unified processor and move immediately to case storage"""
+def _process_file_with_ai(upload_path, filename, case_id, checksum, file_handler):
+    """Process file using unified processor (which handles moving the file)"""
     from app.utils.unified_processor import FileProcessor
     from app.utils.controlled_smart_tagger import controlled_smart_tagger
     
     processor = FileProcessor()
     
     with st.spinner(f"🔄 Analyzing {filename}..."):
-        # Process file (but don't move it yet - unified processor might move it)
+        # Process file (unified_processor handles the moving)
         result = processor.process_file(str(upload_path), case_id)
     
-    # Move file to case storage using FileHandler
-    move_result = file_handler.add_file(
-        upload_path, 
-        filename,
-        metadata={
+    # Update manifest with checksum for future duplicate detection
+    # (File was already moved by unified_processor)
+    file_handler.manifest[filename] = {
+        'checksum': checksum,
+        'original_name': filename,
+        'added_date': datetime.now().isoformat(),
+        'metadata': {
             'tags': result['tags'],
             'flags': result['flags'],
-            'transcript': result.get('transcript'),
-            'checksum': checksum
+            'transcript': result.get('transcript')
         }
-    )
+    }
+    file_handler._save_manifest()
     
-    if move_result['status'] == 'success':
-        display_filename = move_result['filename']
-        
-        # Show rename notification if needed
-        if move_result['was_renamed']:
-            st.info(f"📝 File renamed to avoid collision: {filename} → {display_filename}")
-        else:
-            st.success(f"✅ Processed: {display_filename}")
-        
-        # Display tags by category
-        categorized = controlled_smart_tagger.get_tag_categories(result['tags'])
-        
-        tag_display = []
-        for category, tags in categorized.items():
-            if tags:
-                tag_display.append(f"**{category.replace('_', ' ').title()}:** {', '.join(tags)}")
-        
-        if tag_display:
-            st.write(" | ".join(tag_display[:3]))  # Show first 3 categories
-        
-        # Display flags if present
-        if result['flags']:
-            st.warning(f"🚩 **Flags:** {', '.join(result['flags'])}")
-        
-        return {
-            'status': 'success',
-            'filename': display_filename,
-            'was_renamed': move_result['was_renamed'],
-            'tags_count': len(result['tags']),
-            'flags_count': len(result['flags'])
-        }
+    st.success(f"✅ Processed: {filename}")
     
-    else:
-        st.error(f"❌ Failed to save {filename}: {move_result['message']}")
-        return {
-            'status': 'error',
-            'error': move_result['message']
-        }
+    # Display tags by category
+    categorized = controlled_smart_tagger.get_tag_categories(result['tags'])
+    
+    tag_display = []
+    for category, tags in categorized.items():
+        if tags:
+            tag_display.append(f"**{category.replace('_', ' ').title()}:** {', '.join(tags)}")
+    
+    if tag_display:
+        st.write(" | ".join(tag_display[:3]))  # Show first 3 categories
+    
+    # Display flags if present
+    if result['flags']:
+        st.warning(f"🚩 **Flags:** {', '.join(result['flags'])}")
+    
+    return {
+        'status': 'success',
+        'filename': filename,
+        'tags_count': len(result['tags']),
+        'flags_count': len(result['flags'])
+    }

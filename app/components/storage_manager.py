@@ -2,12 +2,11 @@
 Local storage management component for sidebar
 """
 import streamlit as st
-import shutil
 import platform
 import subprocess
 import time
 from pathlib import Path
-from app.config import USER_STORAGE_PATH, CASE_FILES_DIR
+from app.config import CASE_FILES_DIR
 
 
 def render_storage_expander():
@@ -20,27 +19,19 @@ def render_storage_expander():
 
 
 def _open_file_storage():
-    """Open the local file storage directory in system file explorer"""
-    # Create user-friendly storage location
-    USER_STORAGE_PATH.mkdir(exist_ok=True)
-    
-    # Copy case files to user directory if they don't exist
-    if CASE_FILES_DIR.exists():
-        for case_folder in CASE_FILES_DIR.iterdir():
-            if case_folder.is_dir():
-                dest_folder = USER_STORAGE_PATH / case_folder.name
-                if not dest_folder.exists():
-                    shutil.copytree(case_folder, dest_folder)
+    """Open the case files directory in system file explorer"""
+    # Ensure the directory exists
+    CASE_FILES_DIR.mkdir(parents=True, exist_ok=True)
     
     # Open the folder in file explorer
     try:
         system = platform.system()
         if system == "Darwin":  # macOS
-            subprocess.run(["open", str(USER_STORAGE_PATH)])
+            subprocess.run(["open", str(CASE_FILES_DIR)])
         elif system == "Windows":
-            subprocess.run(["explorer", str(USER_STORAGE_PATH)])
+            subprocess.run(["explorer", str(CASE_FILES_DIR)])
         else:  # Linux
-            subprocess.run(["xdg-open", str(USER_STORAGE_PATH)])
+            subprocess.run(["xdg-open", str(CASE_FILES_DIR)])
         
         success_placeholder = st.sidebar.empty()
         success_placeholder.success("File storage opened!")
@@ -48,4 +39,4 @@ def _open_file_storage():
         success_placeholder.empty()
     except Exception as e:
         st.error(f"Could not open folder: {e}")
-        st.code(f"Files are stored at: {USER_STORAGE_PATH}")
+        st.code(f"Files are stored at: {CASE_FILES_DIR}")

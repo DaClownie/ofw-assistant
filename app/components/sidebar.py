@@ -12,7 +12,7 @@ def render_sidebar():
     st.sidebar.title("OFW Assistant")
     
     # Main navigation
-    page = st.sidebar.radio("Navigation", ["Upload", "Dashboard", "Memo Builder"])
+    page = st.sidebar.radio("Navigation", ["Upload", "Dashboard", "Memo Builder", "Case Management"])
     
     # Divider
     st.sidebar.markdown("---")
