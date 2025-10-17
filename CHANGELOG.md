@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0] - 2025-10-16
+
+### Added
+- Save Local Memo differentiated from Save AI Enhanced Memo feature
+- Memo generation by tags and tag categories
+- Case management subsection with the ability to rename and delete cases and export files associated with the the tags into a zip file
+
+### Fixed
+- Duplication of saved files
+- Dashboard tag information not displaying by case
+
+### Changed
+- OpenAI API key splash screen on initial launch
+- Installer process allowing for clean or upgrade installation saving download and preserving previous cases
+
 ## [1.1.2] - 2025-10-07
 
 ### Added
